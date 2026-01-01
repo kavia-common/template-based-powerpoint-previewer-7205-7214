@@ -1,33 +1,26 @@
-import React, { useMemo, useRef, useState } from "react";
-import { getSampleTemplates, parseTemplateJson, toDownloadableJson } from "../utils/templateSchema";
-import { getFeatureFlags } from "../utils/featureFlags";
+import React, { useRef } from "react";
 
-function downloadTextFile(filename, text) {
-  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Failed to read image"));
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.readAsDataURL(file);
+  });
 }
 
 // PUBLIC_INTERFACE
 export default function TemplateManager({
-  activeTemplate,
-  uploadedPptxFileName,
+  uploadedPptxTemplate,
   onUploadPptx,
-  onSelectTemplate,
-  onImportTemplateJson,
-  onExportTemplateJson,
+  globalFirstSlide,
+  onSetGlobalFirstSlideImage,
+  onToggleGlobalFirstSlideEnabled,
+  onResetTemplate,
 }) {
-  /** Sidebar UI for template selection/upload + JSON schema fallback flow. */
-  const flags = getFeatureFlags();
-  const fileRef = useRef(null);
-  const jsonFileRef = useRef(null);
-  const [jsonText, setJsonText] = useState("");
-
-  const demoTemplates = useMemo(() => (flags.demoTemplates ? getSampleTemplates() : []), [flags.demoTemplates]);
+  /** Sidebar UI for the single-template upload flow + global first slide image configuration. */
+  const pptxFileRef = useRef(null);
+  const firstSlideFileRef = useRef(null);
 
   const handlePptxChange = async (e) => {
     const file = e.target.files?.[0];
@@ -36,153 +29,138 @@ export default function TemplateManager({
     e.target.value = "";
   };
 
-  const handleJsonFileChange = async (e) => {
+  const handleFirstSlideImageChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const text = await file.text();
-    onImportTemplateJson(text);
+    const dataUrl = await fileToDataUrl(file);
+    onSetGlobalFirstSlideImage(dataUrl);
     e.target.value = "";
   };
 
-  const handleImportJsonText = () => {
-    onImportTemplateJson(jsonText);
-  };
-
-  const handleDownloadSample = () => {
-    const sample = getSampleTemplates()[0];
-    downloadTextFile("sample_template_schema.json", toDownloadableJson(sample));
-  };
+  const hasTemplate = Boolean(uploadedPptxTemplate?.name);
 
   return (
     <div className="Panel SidebarColumn" aria-label="Template manager">
       <div className="PanelHeader">
-        <h2>Templates</h2>
+        <h2>Template</h2>
         <span className="Badge" aria-label="Template mode badge">
-          In-browser
+          Single upload
         </span>
       </div>
 
       <div className="PanelBody">
-        <div className="TemplateCard">
-          <strong>Upload .pptx template (optional)</strong>
+        <div className="TemplateCard" style={{ borderColor: "rgba(37,99,235,0.25)" }}>
+          <strong>Upload Template (.pptx)</strong>
           <p>
-            Browser-side parsing of real .pptx templates is limited. If parsing fails, use the JSON schema flow below.
+            Upload one PPTX file and use it as the active template for this session. The app generates slides client-side and will
+            prepend your Global First Slide during preview and download.
           </p>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+
+          <div style={{ display: "grid", gap: 10 }}>
             <button
               type="button"
-              className="Btn Small"
-              onClick={() => fileRef.current?.click()}
-              aria-label="Upload pptx template"
+              className="Btn BtnPrimary"
+              onClick={() => pptxFileRef.current?.click()}
+              aria-label="Upload template pptx"
             >
-              Upload .pptx
+              Upload Template (.pptx)
             </button>
-            {uploadedPptxFileName ? <span className="Badge">Loaded: {uploadedPptxFileName}</span> : null}
+
+            {hasTemplate ? (
+              <div className="Badge" aria-label="Uploaded template badge" style={{ justifyContent: "space-between" }}>
+                <span>Active template: {uploadedPptxTemplate.name}</span>
+                <button type="button" className="Btn Small BtnDanger" onClick={onResetTemplate} aria-label="Remove template">
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="HelpText">No template uploaded yet.</div>
+            )}
           </div>
+
           <input
-            ref={fileRef}
+            ref={pptxFileRef}
             type="file"
             accept=".pptx"
             style={{ display: "none" }}
             onChange={handlePptxChange}
             aria-label="PPTX file input"
           />
-          <div className="HelpText">
-            Limitation: this app currently does <strong>not</strong> map into your real template’s slide shapes. Use JSON schema to
-            reliably generate output.
-          </div>
         </div>
 
         <div className="Divider" />
 
         <div className="TemplateCard">
-          <strong>JSON template schema (recommended)</strong>
-          <p>Import/export a simple template schema that defines slide layouts and placeholders.</p>
+          <strong>Global First Slide</strong>
+          <p>Slide 1 for the whole deck. This image will be shown first in Preview and inserted as the first slide in the PPTX.</p>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 700 }}>
+              <input
+                type="checkbox"
+                checked={Boolean(globalFirstSlide?.enabled)}
+                onChange={(e) => onToggleGlobalFirstSlideEnabled(e.target.checked)}
+                aria-label="Enable global first slide"
+              />
+              Enabled
+            </label>
+
             <button
               type="button"
               className="Btn Small"
-              onClick={() => jsonFileRef.current?.click()}
-              aria-label="Import template schema from json file"
+              onClick={() => firstSlideFileRef.current?.click()}
+              aria-label="Replace global first slide image"
             >
-              Import JSON
+              Replace image
             </button>
-            <button type="button" className="Btn Small" onClick={handleDownloadSample} aria-label="Download sample schema JSON">
-              Download sample
-            </button>
+
             <button
               type="button"
-              className="Btn Small"
-              onClick={() => onExportTemplateJson()}
-              aria-label="Export current template schema"
-              disabled={!activeTemplate}
+              className="Btn Small BtnGhost"
+              onClick={() => onSetGlobalFirstSlideImage("")}
+              aria-label="Clear global first slide image"
             >
-              Export current
+              Clear
             </button>
           </div>
 
           <input
-            ref={jsonFileRef}
+            ref={firstSlideFileRef}
             type="file"
-            accept=".json,application/json"
+            accept="image/*"
             style={{ display: "none" }}
-            onChange={handleJsonFileChange}
-            aria-label="JSON file input"
+            onChange={handleFirstSlideImageChange}
+            aria-label="Global first slide image input"
           />
 
-          <div className="Field" style={{ marginTop: 10 }}>
-            <label htmlFor="jsonSchemaText">Or paste schema JSON</label>
-            <textarea
-              id="jsonSchemaText"
-              className="Textarea"
-              value={jsonText}
-              onChange={(e) => setJsonText(e.target.value)}
-              placeholder='{"name":"My Template","slides":[...]}'
-              aria-label="Paste template schema json"
-            />
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button type="button" className="Btn Small" onClick={handleImportJsonText} aria-label="Import pasted schema">
-                Load schema
-              </button>
-            </div>
-          </div>
-
-          <div className="HelpText">
-            Supports simple placeholders like <code>{"{{title}}"}</code>, <code>{"{{bullets_1}}"}</code>, <code>{"{{image_1}}"}</code>{" "}
-            via schema fields. Generation uses layout recreation (title, bullets, image-left/right).
+          <div style={{ marginTop: 10 }}>
+            {globalFirstSlide?.imageDataUrl ? (
+              <div style={{ display: "grid", gap: 8 }}>
+                <div className="HelpText">Preview:</div>
+                <img
+                  src={globalFirstSlide.imageDataUrl}
+                  alt="Global first slide preview"
+                  style={{
+                    width: "100%",
+                    borderRadius: 14,
+                    border: "1px solid rgba(17,24,39,0.12)",
+                    boxShadow: "0 1px 2px rgba(15,23,42,0.06)",
+                    aspectRatio: "16 / 9",
+                    objectFit: "cover",
+                    background: "#fff",
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="HelpText">No image selected.</div>
+            )}
           </div>
         </div>
-
-        {flags.demoTemplates ? (
-          <>
-            <div className="Divider" />
-            <div className="TemplateCard">
-              <strong>Demo Templates</strong>
-              <p>Enabled via <code>REACT_APP_FEATURE_FLAGS=demo-templates</code></p>
-              <div style={{ display: "grid", gap: 10 }}>
-                {demoTemplates.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    className="Btn"
-                    onClick={() => onSelectTemplate(t)}
-                    aria-label={`Load demo template ${t.name}`}
-                    style={{ textAlign: "left" }}
-                  >
-                    <div style={{ fontWeight: 700, fontSize: 14 }}>{t.name}</div>
-                    <div style={{ fontSize: 12, color: "rgba(17,24,39,0.65)", marginTop: 4 }}>{t.description}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </>
-        ) : null}
 
         <div className="Divider" />
 
         <div className="HelpText">
-          Tip: Use <kbd>Tab</kbd> to navigate. Preview fullscreen supports <kbd>←</kbd>/<kbd>→</kbd> to switch slides.
+          Tip: Upload your template first. The Editor, Preview, and Download will be enabled once a template is uploaded.
         </div>
       </div>
     </div>

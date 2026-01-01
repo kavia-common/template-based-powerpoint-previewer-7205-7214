@@ -90,7 +90,7 @@ function addImage(slide, imageDataUrl, opts) {
 }
 
 // PUBLIC_INTERFACE
-export async function generatePptx({ template, content, theme }) {
+export async function generatePptx({ template, content, theme, globalFirstSlide }) {
   /** Generates a PPTX from a JSON schema template and user content (all in-browser). */
   const pptx = new PptxGenJS();
   pptx.layout = slideSizeFromAspect(template.aspect);
@@ -98,6 +98,20 @@ export async function generatePptx({ template, content, theme }) {
   pptx.author = "PPT Template Previewer";
   pptx.company = "In-browser";
   pptx.subject = template.name || "Generated Deck";
+
+  // Global first slide (image-only)
+  if (globalFirstSlide?.enabled && globalFirstSlide?.imageDataUrl) {
+    const slide = pptx.addSlide();
+    // Keep theme accent but let image dominate
+    addTopAccent(slide, theme);
+    slide.addImage({
+      data: globalFirstSlide.imageDataUrl,
+      x: 0,
+      y: 0,
+      w: 13.333,
+      h: 7.5,
+    });
+  }
 
   for (const slideDef of template.slides || []) {
     const slide = pptx.addSlide();
@@ -152,9 +166,9 @@ export async function generatePptx({ template, content, theme }) {
 }
 
 // PUBLIC_INTERFACE
-export async function downloadPptx({ template, content, theme, fileName }) {
+export async function downloadPptx({ template, content, theme, fileName, globalFirstSlide }) {
   /** Generates PPTX and triggers download in the browser. */
-  const pptx = await generatePptx({ template, content, theme });
+  const pptx = await generatePptx({ template, content, theme, globalFirstSlide });
   const safe =
     (fileName || template.name || "presentation")
       .replace(/[^\w\- ]+/g, "")

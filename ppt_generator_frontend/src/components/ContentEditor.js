@@ -32,8 +32,8 @@ export default function ContentEditor({ template, content, errors, onChangeConte
         </div>
         <div className="PanelBody">
           <div className="TemplateCard">
-            <strong>No template selected</strong>
-            <p>Load a Demo Template or import a JSON schema from the sidebar.</p>
+            <strong>No template uploaded</strong>
+            <p>Upload a template (.pptx) from the left panel to enable the editor.</p>
           </div>
         </div>
       </div>

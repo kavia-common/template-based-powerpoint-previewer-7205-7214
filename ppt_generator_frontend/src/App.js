@@ -7,120 +7,144 @@ import PreviewPanel from "./components/PreviewPanel";
 import PreviewModal from "./components/PreviewModal";
 import { buildPreviewSlides } from "./utils/previewRenderer";
 import { clearSession, loadSession, saveSession } from "./utils/storage";
-import { createEmptyContentForTemplate, parseTemplateJson, toDownloadableJson } from "./utils/templateSchema";
+import { createEmptyContentForTemplate, getSampleTemplates } from "./utils/templateSchema";
 import { downloadPptx } from "./utils/pptGenerator";
 import { validateTemplateContent } from "./utils/validators";
 
-function downloadTextFile(filename, text) {
-  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+function defaultFirstSlideDataUrl() {
+  // We keep it simple: use a public asset path. The browser will fetch it when rendering the preview.
+  // For PPTX generation, PptxGenJS expects a data URL; we will convert it on-demand (see ensureDataUrl).
+  return "/assets/global-first-slide-default.png";
+}
+
+async function ensureDataUrl(src) {
+  if (!src) return "";
+  if (src.startsWith("data:")) return src;
+
+  // Convert public URL (e.g., /assets/...) into data URL for PptxGenJS usage.
+  const res = await fetch(src);
+  const blob = await res.blob();
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Failed to read image"));
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.readAsDataURL(blob);
+  });
 }
 
 function AppInner() {
   const { theme } = useTheme();
 
-  const [pptxTemplateFileName, setPptxTemplateFileName] = useState("");
-  const [activeTemplate, setActiveTemplate] = useState(null);
-  const [content, setContent] = useState({});
+  // Single-template upload flow: we store metadata only (no parsing).
+  const [uploadedPptxTemplate, setUploadedPptxTemplate] = useState(null);
+
+  // We still need a schema template for the editor/generator. Since gallery/JSON import are removed,
+  // we bind the app to a single internal schema (the first demo schema) and gate the workflow by PPTX upload.
+  const activeTemplate = useMemo(() => getSampleTemplates()[0], []);
+
+  const [content, setContent] = useState(() => createEmptyContentForTemplate(activeTemplate));
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [status, setStatus] = useState({ type: "idle", message: "" });
+
+  const [globalFirstSlide, setGlobalFirstSlide] = useState({
+    enabled: true,
+    imageDataUrl: defaultFirstSlideDataUrl(),
+  });
 
   // Restore session
   useEffect(() => {
     const session = loadSession();
     if (!session) return;
 
-    if (session.pptxTemplateFileName) setPptxTemplateFileName(session.pptxTemplateFileName);
-    if (session.activeTemplate) setActiveTemplate(session.activeTemplate);
+    if (session.uploadedPptxTemplate) setUploadedPptxTemplate(session.uploadedPptxTemplate);
     if (session.content) setContent(session.content);
+
+    if (session.globalFirstSlide) {
+      setGlobalFirstSlide({
+        enabled: Boolean(session.globalFirstSlide.enabled),
+        imageDataUrl: session.globalFirstSlide.imageDataUrl || defaultFirstSlideDataUrl(),
+      });
+    }
   }, []);
 
   // Persist session
   useEffect(() => {
     saveSession({
-      pptxTemplateFileName,
+      uploadedPptxTemplate,
+      // Keep these for potential future expansion; activeTemplate is stable and not user-switchable.
       activeTemplate,
       content,
+      globalFirstSlide,
     });
-  }, [pptxTemplateFileName, activeTemplate, content]);
+  }, [uploadedPptxTemplate, activeTemplate, content, globalFirstSlide]);
+
+  const hasUploadedTemplate = Boolean(uploadedPptxTemplate?.name);
 
   const errors = useMemo(() => {
-    if (!activeTemplate) return [];
+    if (!hasUploadedTemplate) return [];
     return validateTemplateContent(activeTemplate, content);
-  }, [activeTemplate, content]);
+  }, [hasUploadedTemplate, activeTemplate, content]);
 
   const previewSlides = useMemo(() => {
-    if (!activeTemplate) return [];
-    return buildPreviewSlides({ template: activeTemplate, content, theme });
-  }, [activeTemplate, content, theme]);
+    if (!hasUploadedTemplate) return [];
+    return buildPreviewSlides({ template: activeTemplate, content, theme, globalFirstSlide });
+  }, [hasUploadedTemplate, activeTemplate, content, theme, globalFirstSlide]);
 
   const onUploadPptx = (file) => {
-    // Graceful fallback: store file name only (no deep parsing in this implementation)
-    setPptxTemplateFileName(file?.name || "");
+    setUploadedPptxTemplate({
+      name: file?.name || "",
+      size: typeof file?.size === "number" ? file.size : null,
+      lastModified: typeof file?.lastModified === "number" ? file.lastModified : null,
+    });
+
     setStatus({
-      type: "info",
-      message:
-        "PPTX uploaded. Template parsing is limited in-browser; use JSON schema flow for reliable placeholder mapping.",
+      type: "success",
+      message: "Template uploaded. You can now edit content, preview, and download your deck.",
     });
   };
 
-  const onSelectTemplate = (tpl) => {
-    setActiveTemplate(tpl);
-    setContent(createEmptyContentForTemplate(tpl));
-    setStatus({ type: "idle", message: "" });
+  const onResetTemplate = () => {
+    setUploadedPptxTemplate(null);
+    setIsPreviewOpen(false);
+    setStatus({ type: "idle", message: "Template removed. Upload a template to continue." });
   };
 
-  const onImportTemplateJson = (jsonText) => {
-    try {
-      const tpl = parseTemplateJson(jsonText);
-      // minimal normalization
-      if (!tpl.id) tpl.id = `import_${Date.now()}`;
-      if (!tpl.name) tpl.name = "Imported Template";
-      if (!Array.isArray(tpl.slides)) throw new Error("Template must include slides[]");
-
-      setActiveTemplate(tpl);
-      setContent(createEmptyContentForTemplate(tpl));
-      setStatus({ type: "success", message: "Template schema loaded." });
-    } catch (e) {
-      setStatus({ type: "error", message: `Invalid JSON schema: ${e.message || String(e)}` });
-    }
-  };
-
-  const onExportTemplateJson = () => {
-    if (!activeTemplate) return;
-    downloadTextFile(
-      `${(activeTemplate.name || "template").replace(/\s+/g, "_").toLowerCase()}_schema.json`,
-      toDownloadableJson(activeTemplate)
-    );
-    setStatus({ type: "success", message: "Template schema exported." });
-  };
-
-  const onReset = () => {
-    setPptxTemplateFileName("");
-    setActiveTemplate(null);
-    setContent({});
+  const onResetAll = () => {
+    setUploadedPptxTemplate(null);
+    setContent(createEmptyContentForTemplate(activeTemplate));
+    setGlobalFirstSlide({ enabled: true, imageDataUrl: defaultFirstSlideDataUrl() });
     setIsPreviewOpen(false);
     setStatus({ type: "idle", message: "" });
     clearSession();
   };
 
   const onDownload = async () => {
-    if (!activeTemplate) {
-      setStatus({ type: "error", message: "Load a template first." });
+    if (!hasUploadedTemplate) {
+      setStatus({ type: "error", message: "Upload a template (.pptx) first." });
       return;
     }
     if (errors.length) {
       setStatus({ type: "error", message: "Please fix required fields before downloading." });
       return;
     }
+
     try {
       setStatus({ type: "info", message: "Generating PPTX..." });
-      await downloadPptx({ template: activeTemplate, content, theme, fileName: activeTemplate.name });
+
+      // Ensure first slide is a data URL for PptxGenJS.
+      const firstSlideDataUrl = await ensureDataUrl(globalFirstSlide?.imageDataUrl || "");
+
+      await downloadPptx({
+        template: activeTemplate,
+        content,
+        theme,
+        fileName: uploadedPptxTemplate?.name ? uploadedPptxTemplate.name.replace(/\.pptx$/i, "") : activeTemplate.name,
+        globalFirstSlide: {
+          enabled: Boolean(globalFirstSlide?.enabled),
+          imageDataUrl: firstSlideDataUrl,
+        },
+      });
+
       setStatus({ type: "success", message: "Download started." });
     } catch (e) {
       setStatus({ type: "error", message: `Failed to generate PPTX: ${e.message || String(e)}` });
@@ -128,10 +152,17 @@ function AppInner() {
   };
 
   const statusStyle = useMemo(() => {
-    if (status.type === "error") return { borderColor: "rgba(239,68,68,0.35)", background: "rgba(239,68,68,0.08)", color: "#991b1b" };
-    if (status.type === "success") return { borderColor: "rgba(245,158,11,0.35)", background: "rgba(245,158,11,0.12)", color: "#92400e" };
-    if (status.type === "info") return { borderColor: "rgba(37,99,235,0.35)", background: "rgba(37,99,235,0.10)", color: "#1e40af" };
-    return { borderColor: "var(--ocean-border)", background: "rgba(255,255,255,0.7)", color: "rgba(17,24,39,0.75)" };
+    if (status.type === "error")
+      return { borderColor: "rgba(239,68,68,0.35)", background: "rgba(239,68,68,0.08)", color: "#991b1b" };
+    if (status.type === "success")
+      return { borderColor: "rgba(245,158,11,0.35)", background: "rgba(245,158,11,0.12)", color: "#92400e" };
+    if (status.type === "info")
+      return { borderColor: "rgba(37,99,235,0.35)", background: "rgba(37,99,235,0.10)", color: "#1e40af" };
+    return {
+      borderColor: "var(--ocean-border)",
+      background: "rgba(255,255,255,0.7)",
+      color: "rgba(17,24,39,0.75)",
+    };
   }, [status.type]);
 
   return (
@@ -146,7 +177,14 @@ function AppInner() {
         </div>
 
         <div className="TopActions" aria-label="Primary actions">
-          <button type="button" className="Btn Small BtnPrimary" onClick={onDownload} aria-label="Download PPT">
+          <button
+            type="button"
+            className="Btn Small BtnPrimary"
+            onClick={onDownload}
+            aria-label="Download PPT"
+            disabled={!hasUploadedTemplate}
+            title={!hasUploadedTemplate ? "Upload a template to enable download" : "Download PPT"}
+          >
             Download PPT
           </button>
           <button
@@ -154,11 +192,12 @@ function AppInner() {
             className="Btn Small"
             onClick={() => setIsPreviewOpen(true)}
             aria-label="Preview fullscreen"
-            disabled={previewSlides.length === 0}
+            disabled={!hasUploadedTemplate || previewSlides.length === 0}
+            title={!hasUploadedTemplate ? "Upload a template to enable preview" : "Preview fullscreen"}
           >
             Preview Fullscreen
           </button>
-          <button type="button" className="Btn Small BtnDanger" onClick={onReset} aria-label="Reset session">
+          <button type="button" className="Btn Small BtnDanger" onClick={onResetAll} aria-label="Reset session">
             Reset
           </button>
         </div>
@@ -167,25 +206,52 @@ function AppInner() {
       <div style={{ padding: "0 14px 14px 14px" }}>
         <div className="Badge" style={{ width: "100%", justifyContent: "space-between", ...statusStyle }}>
           <span>
-            {status.message || "Ready. Import a JSON schema or enable demo templates via REACT_APP_FEATURE_FLAGS=demo-templates."}
+            {status.message ||
+              (hasUploadedTemplate
+                ? "Ready. Edit content, preview, and download."
+                : "Upload a template (.pptx) to start. Editor/Preview/Download will be enabled after upload.")}
           </span>
-          {pptxTemplateFileName ? <span>Template file: {pptxTemplateFileName}</span> : <span>No .pptx uploaded</span>}
+          {hasUploadedTemplate ? <span>Template file: {uploadedPptxTemplate.name}</span> : <span>No .pptx uploaded</span>}
         </div>
       </div>
 
       <div className="Layout" role="main" aria-label="Main layout">
         <TemplateManager
-          activeTemplate={activeTemplate}
-          uploadedPptxFileName={pptxTemplateFileName}
+          uploadedPptxTemplate={uploadedPptxTemplate}
           onUploadPptx={onUploadPptx}
-          onSelectTemplate={onSelectTemplate}
-          onImportTemplateJson={onImportTemplateJson}
-          onExportTemplateJson={onExportTemplateJson}
+          globalFirstSlide={globalFirstSlide}
+          onSetGlobalFirstSlideImage={(imageDataUrl) =>
+            setGlobalFirstSlide((prev) => ({ ...prev, imageDataUrl: imageDataUrl || "" }))
+          }
+          onToggleGlobalFirstSlideEnabled={(enabled) => setGlobalFirstSlide((prev) => ({ ...prev, enabled }))}
+          onResetTemplate={onResetTemplate}
         />
 
-        <ContentEditor template={activeTemplate} content={content} errors={errors} onChangeContent={setContent} />
+        {/* Gate editor by uploaded template, per requirements */}
+        {hasUploadedTemplate ? (
+          <ContentEditor template={activeTemplate} content={content} errors={errors} onChangeContent={setContent} />
+        ) : (
+          <div className="Panel MainColumn" aria-label="Content editor">
+            <div className="PanelHeader">
+              <h2>Editor</h2>
+              <span className="KbdHint">Upload a template to start</span>
+            </div>
+            <div className="PanelBody">
+              <div className="TemplateCard">
+                <strong>Upload a template to begin</strong>
+                <p>
+                  This app is configured for a single-template flow. Upload your PPTX in the left panel to enable editing, preview,
+                  and download.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
-        <PreviewPanel slides={previewSlides} onOpenFullscreen={() => setIsPreviewOpen(true)} />
+        <PreviewPanel
+          slides={previewSlides}
+          onOpenFullscreen={() => setIsPreviewOpen(true)}
+        />
       </div>
 
       <PreviewModal isOpen={isPreviewOpen} slides={previewSlides} onClose={() => setIsPreviewOpen(false)} />
