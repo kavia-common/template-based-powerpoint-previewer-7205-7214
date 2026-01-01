@@ -1,4 +1,7 @@
-import React, { useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
+
+const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg"]);
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // ~8MB
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -7,6 +10,12 @@ function fileToDataUrl(file) {
     reader.onload = () => resolve(String(reader.result || ""));
     reader.readAsDataURL(file);
   });
+}
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes)) return "";
+  const mb = bytes / (1024 * 1024);
+  return `${mb.toFixed(1)}MB`;
 }
 
 // PUBLIC_INTERFACE
@@ -21,6 +30,7 @@ export default function TemplateManager({
   /** Sidebar UI for the single-template upload flow + global first slide image configuration. */
   const pptxFileRef = useRef(null);
   const firstSlideFileRef = useRef(null);
+  const [firstSlideError, setFirstSlideError] = useState("");
 
   const handlePptxChange = async (e) => {
     const file = e.target.files?.[0];
@@ -29,12 +39,44 @@ export default function TemplateManager({
     e.target.value = "";
   };
 
+  const isCustomFirstSlide = useMemo(() => {
+    const src = globalFirstSlide?.imageDataUrl || "";
+    // We consider anything not a public asset path as "custom" (data URL is the common case).
+    return Boolean(src) && !src.startsWith("/assets/");
+  }, [globalFirstSlide?.imageDataUrl]);
+
   const handleFirstSlideImageChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const dataUrl = await fileToDataUrl(file);
-    onSetGlobalFirstSlideImage(dataUrl);
-    e.target.value = "";
+
+    setFirstSlideError("");
+
+    // Basic validations per requirements
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      setFirstSlideError("Unsupported file type. Please upload a PNG or JPG image.");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setFirstSlideError(`File too large (${formatBytes(file.size)}). Max size is ${formatBytes(MAX_IMAGE_BYTES)}.`);
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      onSetGlobalFirstSlideImage(dataUrl);
+    } catch (err) {
+      setFirstSlideError(err?.message || "Failed to read image.");
+    } finally {
+      e.target.value = "";
+    }
+  };
+
+  const handleClearFirstSlide = () => {
+    // Parent will interpret empty string as "revert to default" (fallback).
+    setFirstSlideError("");
+    onSetGlobalFirstSlideImage("");
   };
 
   const hasTemplate = Boolean(uploadedPptxTemplate?.name);
@@ -111,14 +153,15 @@ export default function TemplateManager({
               onClick={() => firstSlideFileRef.current?.click()}
               aria-label="Replace global first slide image"
             >
-              Replace image
+              Replace
             </button>
 
             <button
               type="button"
               className="Btn Small BtnGhost"
-              onClick={() => onSetGlobalFirstSlideImage("")}
+              onClick={handleClearFirstSlide}
               aria-label="Clear global first slide image"
+              title="Revert to default"
             >
               Clear
             </button>
@@ -127,33 +170,34 @@ export default function TemplateManager({
           <input
             ref={firstSlideFileRef}
             type="file"
-            accept="image/*"
+            accept="image/png,image/jpeg"
             style={{ display: "none" }}
             onChange={handleFirstSlideImageChange}
             aria-label="Global first slide image input"
           />
 
-          <div style={{ marginTop: 10 }}>
-            {globalFirstSlide?.imageDataUrl ? (
-              <div style={{ display: "grid", gap: 8 }}>
-                <div className="HelpText">Preview:</div>
-                <img
-                  src={globalFirstSlide.imageDataUrl}
-                  alt="Global first slide preview"
-                  style={{
-                    width: "100%",
-                    borderRadius: 14,
-                    border: "1px solid rgba(17,24,39,0.12)",
-                    boxShadow: "0 1px 2px rgba(15,23,42,0.06)",
-                    aspectRatio: "16 / 9",
-                    objectFit: "cover",
-                    background: "#fff",
-                  }}
-                />
-              </div>
-            ) : (
-              <div className="HelpText">No image selected.</div>
-            )}
+          {firstSlideError ? (
+            <div className="HelpText" style={{ marginTop: 10, color: "var(--ocean-error)" }} aria-label="First slide error">
+              {firstSlideError}
+            </div>
+          ) : null}
+
+          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+            <div className="HelpText">Thumbnail:</div>
+            <img
+              src={globalFirstSlide?.imageDataUrl || ""}
+              alt="Global first slide thumbnail"
+              style={{
+                width: 140,
+                height: 80,
+                borderRadius: 12,
+                border: "1px solid rgba(17,24,39,0.12)",
+                boxShadow: "0 1px 2px rgba(15,23,42,0.06)",
+                objectFit: "cover",
+                background: "#fff",
+              }}
+            />
+            <div className="HelpText">{isCustomFirstSlide ? "Using custom image" : "Using default image"}</div>
           </div>
         </div>
 

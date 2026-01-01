@@ -221,7 +221,11 @@ function AppInner() {
           onUploadPptx={onUploadPptx}
           globalFirstSlide={globalFirstSlide}
           onSetGlobalFirstSlideImage={(imageDataUrl) =>
-            setGlobalFirstSlide((prev) => ({ ...prev, imageDataUrl: imageDataUrl || "" }))
+            setGlobalFirstSlide((prev) => ({
+              ...prev,
+              // Empty string (Clear) means revert to default, per requirements.
+              imageDataUrl: imageDataUrl ? imageDataUrl : defaultFirstSlideDataUrl(),
+            }))
           }
           onToggleGlobalFirstSlideEnabled={(enabled) => setGlobalFirstSlide((prev) => ({ ...prev, enabled }))}
           onResetTemplate={onResetTemplate}

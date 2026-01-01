@@ -52,6 +52,13 @@ Preview is intentionally lightweight and fast:
 - It renders slides as **HTML/CSS approximations**, not actual PPT rendering.
 - Images are previewed using their uploaded data URL.
 
+## Global First Slide image
+
+In the left sidebar, under **Global First Slide**:
+- Click **Replace** to upload a PNG/JPG that will be used as slide 1 (Preview updates instantly and downloads will include it).
+- Click **Clear** to revert back to the default first slide image.
+- Custom image selection is persisted in `localStorage` for the session.
+
 ## Accessibility
 
 - Buttons and inputs have `aria-label`s
