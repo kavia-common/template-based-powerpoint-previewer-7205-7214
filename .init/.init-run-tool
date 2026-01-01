@@ -1,0 +1,4 @@
+{
+    "command": "PORT=<port> HOST=<host> BROWSER=none npm start",
+    "working_directory": "/home/kavia/workspace/code-generation/template-based-powerpoint-previewer-7205-7214/ppt_generator_frontend"
+}
