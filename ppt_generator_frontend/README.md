@@ -1,82 +1,77 @@
-# Lightweight React Template for KAVIA
+# PPT Template Previewer (Frontend)
 
-This project provides a minimal React template with a clean, modern UI and minimal dependencies.
+A React web app that lets you generate and preview PowerPoint decks **fully in the browser** (no backend).
 
-## Features
+## Quick start
 
-- **Lightweight**: No heavy UI frameworks - uses only vanilla CSS and React
-- **Modern UI**: Clean, responsive design with KAVIA brand styling
-- **Fast**: Minimal dependencies for quick loading times
-- **Simple**: Easy to understand and modify
-
-## Getting Started
-
-In the project directory, you can run:
-
-### `npm start`
-
-Runs the app in development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
-
-### `npm test`
-
-Launches the test runner in interactive watch mode.
-
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-## Customization
-
-### Colors
-
-The main brand colors are defined as CSS variables in `src/App.css`:
-
-```css
-:root {
-  --kavia-orange: #E87A41;
-  --kavia-dark: #1A1A1A;
-  --text-color: #ffffff;
-  --text-secondary: rgba(255, 255, 255, 0.7);
-  --border-color: rgba(255, 255, 255, 0.1);
-}
+```bash
+npm start
 ```
 
-### Components
+Runs on **http://localhost:3000**.
 
-This template uses pure HTML/CSS components instead of a UI framework. You can find component styles in `src/App.css`. 
+## Supported flows
 
-Common components include:
-- Buttons (`.btn`, `.btn-large`)
-- Container (`.container`)
-- Navigation (`.navbar`)
-- Typography (`.title`, `.subtitle`, `.description`)
+### 1) Recommended: JSON template schema flow
+Because full `.pptx` parsing/mapping in a browser can be unreliable/heavy, this app supports a **simple JSON template schema** that defines:
 
-## Learn More
+- Slides
+- Layout type (e.g. `title`, `title+bullets`, `image-right`)
+- Fields (text, bullets, images)
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+From that schema, the editor dynamically renders the needed fields. The PPTX is generated with **PptxGenJS**.
 
-### Code Splitting
+**How to use**
+1. In the left sidebar, click **Import JSON** (or paste JSON) to load a schema.
+2. Fill out content in the editor.
+3. Use **Download PPT** to generate and download a `.pptx`.
+4. Use **Preview Fullscreen** to view a carousel preview.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+**Export/import**
+- Click **Export current** to download the current schema.
+- Click **Download sample** to get an example schema file.
 
-### Analyzing the Bundle Size
+### 2) Optional: Upload `.pptx` template (graceful fallback)
+You may upload a `.pptx` template file. In this implementation, the file name is stored and shown to the user; **the app does not map into real slide shapes**.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+If you need reliable placeholder-driven generation, use the JSON schema flow.
 
-### Making a Progressive Web App
+## Demo templates (feature flag)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Enable Demo Templates gallery by setting:
 
-### Advanced Configuration
+- `REACT_APP_FEATURE_FLAGS=demo-templates`
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+Then you can load:
+- Pitch Deck (Demo)
+- Report (Demo)
 
-### Deployment
+## Preview notes
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+Preview is intentionally lightweight and fast:
+- It renders slides as **HTML/CSS approximations**, not actual PPT rendering.
+- Images are previewed using their uploaded data URL.
 
-### `npm run build` fails to minify
+## Accessibility
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- Buttons and inputs have `aria-label`s
+- Fullscreen preview supports:
+  - `Esc` to close
+  - `←` / `→` to navigate slides
+  - Full keyboard navigation via Tab
+
+## Limitations
+
+- No backend storage; state is kept in React and persisted to `localStorage`.
+- Real `.pptx` template parsing/mapping is not implemented (complex in-browser). Use JSON schema templates for reliable results.
+- Generated slides use simple layout recreation rather than editing a provided `.pptx` template file.
+
+## Theme
+
+Uses the **Ocean Professional** theme tokens:
+- Primary: `#2563EB`
+- Secondary/Success: `#F59E0B`
+- Error: `#EF4444`
+- Background: `#f9fafb`
+- Surface: `#ffffff`
+- Text: `#111827`

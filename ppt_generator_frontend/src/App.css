@@ -1,104 +1,347 @@
-/* CSS Variables for Theme Management */
-:root {
-  /* Light theme colors */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8f9fa;
-  --text-primary: #282c34;
-  --text-secondary: #61dafb;
-  --border-color: #e9ecef;
-  --button-bg: #007bff;
-  --button-text: #ffffff;
-}
+/* App layout + UI primitives (Ocean Professional) */
 
-[data-theme="dark"] {
-  /* Dark theme colors */
-  --bg-primary: #1a1a1a;
-  --bg-secondary: #282c34;
-  --text-primary: #ffffff;
-  --text-secondary: #61dafb;
-  --border-color: #404040;
-  --button-bg: #0056b3;
-  --button-text: #ffffff;
-}
-
-.App {
-  text-align: center;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+.AppShell {
+  height: 100%;
   min-height: 100vh;
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: var(--bg-secondary);
-  min-height: 100vh;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), #f9fafb);
   display: flex;
   flex-direction: column;
+}
+
+.TopBar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  gap: 12px;
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: var(--text-primary);
-  transition: background-color 0.3s ease;
-  position: relative;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--ocean-border);
 }
 
-.App-link {
-  color: var(--text-secondary);
-  transition: color 0.3s ease;
+.Brand {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
-.theme-toggle {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background-color: var(--button-bg);
-  color: var(--button-text);
-  border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
+.BrandMark {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--ocean-primary), rgba(37, 99, 235, 0.6));
+  box-shadow: var(--shadow-sm);
+}
+
+.BrandText {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.BrandText strong {
   font-size: 14px;
-  font-weight: 600;
+}
+.BrandText span {
+  font-size: 12px;
+  color: var(--ocean-muted);
+}
+
+.TopActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.Layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 320px 1fr 360px;
+  gap: 14px;
+  padding: 14px;
+}
+
+.Panel {
+  background: var(--ocean-surface);
+  border: 1px solid var(--ocean-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.PanelHeader {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--ocean-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.PanelHeader h2 {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(17, 24, 39, 0.75);
+}
+
+.PanelBody {
+  padding: 14px;
+  overflow: auto;
+}
+
+.KbdHint {
+  font-size: 12px;
+  color: var(--ocean-muted);
+}
+
+.Btn {
+  border: 1px solid var(--ocean-border);
+  background: #fff;
+  color: var(--ocean-text);
+  padding: 10px 12px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
 }
 
-.theme-toggle:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  opacity: 0.9;
+.Btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
-.theme-toggle:active {
+.Btn:active {
   transform: translateY(0);
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+.BtnPrimary {
+  background: var(--ocean-primary);
+  color: #fff;
+  border-color: rgba(37, 99, 235, 0.4);
+}
+
+.BtnWarning {
+  background: rgba(245, 158, 11, 0.16);
+  color: #92400e;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.BtnDanger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #991b1b;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.BtnGhost {
+  background: transparent;
+}
+
+.Small {
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.Input,
+.Textarea,
+.Select {
+  width: 100%;
+  border: 1px solid var(--ocean-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fff;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.Textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.Input:focus,
+.Textarea:focus,
+.Select:focus {
+  outline: none;
+  border-color: rgba(37, 99, 235, 0.5);
+  box-shadow: var(--focus);
+}
+
+.Field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.Field label {
+  font-size: 13px;
+  color: rgba(17, 24, 39, 0.85);
+  font-weight: 600;
+}
+
+.HelpText {
+  font-size: 12px;
+  color: var(--ocean-muted);
+  line-height: 1.4;
+}
+
+.Badge {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--ocean-border);
+  font-size: 12px;
+  color: rgba(17, 24, 39, 0.8);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.Divider {
+  height: 1px;
+  background: var(--ocean-border);
+  margin: 12px 0;
+}
+
+.TemplateCard {
+  border: 1px solid var(--ocean-border);
+  border-radius: 14px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.06), rgba(255, 255, 255, 0.85));
+}
+
+.TemplateCard strong {
+  font-size: 14px;
+}
+
+.TemplateCard p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ocean-muted);
+}
+
+.ThumbGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.SlideThumb {
+  border: 1px solid var(--ocean-border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.SlideThumbHeader {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: rgba(17, 24, 39, 0.75);
+  border-bottom: 1px solid var(--ocean-border);
+  display: flex;
+  justify-content: space-between;
+}
+
+.SlideThumbBody {
+  padding: 10px;
+}
+
+.ThumbSlide {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: #fff;
+  overflow: hidden;
+}
+
+/* Modal */
+.ModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  z-index: 50;
+}
+
+.Modal {
+  width: min(980px, 100%);
+  max-height: min(680px, 100%);
+  background: var(--ocean-surface);
+  border: 1px solid var(--ocean-border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ModalHeader {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--ocean-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ModalHeader h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.ModalBody {
+  padding: 14px;
+  overflow: auto;
+}
+
+.ModalNav {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.FullSlide {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: #fff;
+  overflow: hidden;
+}
+
+/* Responsive: collapse right preview to drawer-like toggle */
+@media (max-width: 1100px) {
+  .Layout {
+    grid-template-columns: 320px 1fr;
   }
-  to {
-    transform: rotate(360deg);
+  .PreviewColumn {
+    display: none;
   }
 }
 
-/* Responsive design for mobile */
-@media (max-width: 768px) {
-  .theme-toggle {
-    top: 10px;
-    right: 10px;
-    padding: 8px 16px;
-    font-size: 12px;
+@media (max-width: 760px) {
+  .Layout {
+    grid-template-columns: 1fr;
+  }
+  .SidebarColumn {
+    order: 1;
+  }
+  .MainColumn {
+    order: 2;
   }
 }
